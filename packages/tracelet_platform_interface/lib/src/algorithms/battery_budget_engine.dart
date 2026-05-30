@@ -15,16 +15,30 @@ class BatteryBudgetEngine {
     int? initialPeriodicInterval,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
-       _targetBudgetPerHour = targetBudgetPerHour {
+       _targetBudgetPerHour = targetBudgetPerHour,
+       _initialDistanceFilter = initialDistanceFilter,
+       _initialAccuracyIndex = initialAccuracyIndex,
+       _initialPeriodicInterval = initialPeriodicInterval;
+
+  /// Initialize the Rust-backed budget engine.
+  ///
+  /// Must be called after [RustLib.init] has completed.
+  /// Safe to call multiple times (idempotent).
+  void initialize() {
+    if (_inner != null) return;
     if (!kIsWeb) {
       _inner = BatteryBudgetEngineDart(
-        targetBudgetPerHour: targetBudgetPerHour,
-        initialDistanceFilter: initialDistanceFilter,
-        initialAccuracyIndex: initialAccuracyIndex,
-        initialPeriodicInterval: initialPeriodicInterval,
+        targetBudgetPerHour: _targetBudgetPerHour,
+        initialDistanceFilter: _initialDistanceFilter,
+        initialAccuracyIndex: _initialAccuracyIndex,
+        initialPeriodicInterval: _initialPeriodicInterval,
       );
     }
   }
+
+  final double _initialDistanceFilter;
+  final int _initialAccuracyIndex;
+  final int? _initialPeriodicInterval;
 
   BudgetAdjustmentEvent? processSample(
     double batteryLevel, {
@@ -62,7 +76,7 @@ class BatteryBudgetEngine {
     return _targetBudgetPerHour; // We need to add this field.
   }
 
-  late final double _targetBudgetPerHour;
+  final double _targetBudgetPerHour;
 
   double get distanceFilter => _inner?.getDistanceFilter() ?? 10.0;
   int get accuracyIndex => _inner?.getAccuracyIndex() ?? 0;

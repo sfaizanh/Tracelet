@@ -7,7 +7,14 @@ class TripManager {
   TripManagerDart? _inner;
   void Function(Map<String, Object?>)? onTripEnd;
 
-  TripManager() {
+  TripManager();
+
+  /// Initialize the Rust-backed trip engine.
+  ///
+  /// Must be called after [RustLib.init] has completed.
+  /// Safe to call multiple times (idempotent).
+  void initialize() {
+    if (_inner != null) return;
     if (!kIsWeb) {
       _inner = TripManagerDart();
     }

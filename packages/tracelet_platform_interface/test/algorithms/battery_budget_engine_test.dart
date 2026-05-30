@@ -7,7 +7,8 @@ void main() async {
   await RustLib.init();
   group('BatteryBudgetEngine', () {
     test('constructor sets defaults', () {
-      final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0);
+      final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0)
+        ..initialize();
 
       expect(engine.targetBudgetPerHour, 3.0);
       expect(engine.distanceFilter, 10.0);
@@ -21,7 +22,7 @@ void main() async {
         initialDistanceFilter: 50.0,
         initialAccuracyIndex: 2,
         initialPeriodicInterval: 300,
-      );
+      )..initialize();
 
       expect(engine.targetBudgetPerHour, 5.0);
       expect(engine.distanceFilter, 50.0);
@@ -33,25 +34,27 @@ void main() async {
       final tooHigh = BatteryBudgetEngine(
         targetBudgetPerHour: 3.0,
         initialAccuracyIndex: 10,
-      );
+      )..initialize();
       expect(tooHigh.accuracyIndex, 4);
 
       final tooLow = BatteryBudgetEngine(
         targetBudgetPerHour: 3.0,
         initialAccuracyIndex: -5,
-      );
+      )..initialize();
       expect(tooLow.accuracyIndex, 0);
     });
 
     test('first processSample returns null (baseline)', () {
-      final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0);
+      final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0)
+        ..initialize();
 
       final result = engine.processSample(0.95);
       expect(result, isNull);
     });
 
     test('second processSample within 60s returns null', () {
-      final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0);
+      final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0)
+        ..initialize();
 
       // First call sets baseline
       engine.processSample(0.95);
@@ -62,7 +65,8 @@ void main() async {
     });
 
     test('reset allows re-establishing baseline', () {
-      final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0);
+      final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0)
+        ..initialize();
 
       engine.processSample(0.95);
       engine.reset();
@@ -77,7 +81,7 @@ void main() async {
         targetBudgetPerHour: 5.0,
         initialDistanceFilter: 50.0,
         initialAccuracyIndex: 2,
-      );
+      )..initialize();
 
       engine.processSample(0.95);
       engine.reset();
@@ -122,7 +126,7 @@ void main() async {
       final engine = BatteryBudgetEngine(
         targetBudgetPerHour: 3.0,
         initialDistanceFilter: 100.0,
-      );
+      )..initialize();
       expect(engine.distanceFilter, 100.0);
     });
 
@@ -130,12 +134,13 @@ void main() async {
       final engine = BatteryBudgetEngine(
         targetBudgetPerHour: 3.0,
         initialPeriodicInterval: 300,
-      );
+      )..initialize();
       expect(engine.periodicInterval, 300);
     });
 
     test('periodicInterval is null when not provided', () {
-      final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0);
+      final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0)
+        ..initialize();
       expect(engine.periodicInterval, isNull);
     });
 
@@ -143,7 +148,7 @@ void main() async {
       final engine = BatteryBudgetEngine(
         targetBudgetPerHour: 3.0,
         initialAccuracyIndex: -100,
-      );
+      )..initialize();
       expect(engine.accuracyIndex, 0);
     });
 
@@ -151,7 +156,7 @@ void main() async {
       final engine = BatteryBudgetEngine(
         targetBudgetPerHour: 3.0,
         initialAccuracyIndex: 100,
-      );
+      )..initialize();
       expect(engine.accuracyIndex, 4);
     });
 
@@ -161,7 +166,7 @@ void main() async {
         initialDistanceFilter: 200.0,
         initialAccuracyIndex: 3,
         initialPeriodicInterval: 600,
-      );
+      )..initialize();
 
       // Establish baseline then reset
       engine.processSample(0.95);
@@ -177,7 +182,8 @@ void main() async {
     });
 
     test('charging (battery increase) returns null', () {
-      final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0);
+      final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0)
+        ..initialize();
 
       // The engine uses DateTime.now() internally so we can only test
       // the first-sample baseline behavior directly. Charging detection
@@ -209,7 +215,7 @@ void main() async {
         initialAccuracyIndex: initialAccuracyIndex,
         initialPeriodicInterval: initialPeriodicInterval,
         clock: () => fakeNow,
-      );
+      )..initialize();
     }
 
     test('throttles when draining too fast', () {

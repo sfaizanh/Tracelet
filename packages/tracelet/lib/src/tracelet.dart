@@ -140,6 +140,7 @@ class Tracelet {
             ? config.geo.periodicLocationInterval
             : null,
       );
+      _batteryBudgetEngine!.initialize();
     } else {
       _batteryBudgetEngine = null;
     }
@@ -165,9 +166,31 @@ class Tracelet {
   /// Returns `false` on web (headless isolates not supported).
   static bool get isHeadlessRegistered => _headlessRegistered;
 
+  /// Completer that guards concurrent calls to [ready].
+  ///
+  /// Ensures [initializeRustLib] runs exactly once and all concurrent
+  /// callers await the same initialization future.
+  static Completer<void>? _rustInitCompleter;
+
+  /// Whether the Rust bridge has been successfully initialized.
+  static bool get isRustInitialized =>
+      _rustInitCompleter?.isCompleted ?? false;
+
+  /// Throws [StateError] if [ready] has not completed successfully.
+  static void _assertReady() {
+    if (!isRustInitialized) {
+      throw StateError(
+        'Tracelet.ready() has not been called or has not completed. '
+        'Await Tracelet.ready(config) before calling start/stop.',
+      );
+    }
+  }
+
   /// Initialize the plugin and bind the native lifecycle.
   ///
   /// This should be the first method called before [start] or [startGeofences].
+  /// Safe to call concurrently — subsequent callers await the first
+  /// initialization and then apply their config.
   ///
   /// ```dart
   /// final state = await Tracelet.ready(Config(
@@ -176,13 +199,24 @@ class Tracelet {
   /// print('Enabled: ${state.enabled}');
   /// ```
   static Future<State> ready(Config config) async {
-    try {
-      await initializeRustLib();
-    } catch (e) {
-      // Ignored if already initialized, otherwise print error
-      // ignore: avoid_print
-      print('Tracelet: initializeRustLib warning: $e');
+    // Ensure Rust bridge is initialized exactly once.
+    if (_rustInitCompleter == null) {
+      _rustInitCompleter = Completer<void>();
+      try {
+        await initializeRustLib();
+        _tripManager.initialize();
+        _rustInitCompleter!.complete();
+      } catch (e) {
+        _rustInitCompleter!.completeError(e);
+        _rustInitCompleter = null; // Allow retry on next call.
+        rethrow;
+      }
+    } else if (!_rustInitCompleter!.isCompleted) {
+      // Another call is already initializing — wait for it.
+      await _rustInitCompleter!.future;
     }
+    // If already completed successfully, fall through.
+
     _currentConfig = config;
 
     _geofenceEvaluator.clear();
@@ -202,7 +236,9 @@ class Tracelet {
   /// Start location tracking.
   ///
   /// Returns the updated [State] after starting.
+  /// Throws [StateError] if [ready] has not been called or has not completed.
   static Future<State> start() async {
+    _assertReady();
     final result = await _platform.start();
 
     // Start internal trip detection subscriptions.
@@ -217,7 +253,9 @@ class Tracelet {
   /// Stop location tracking.
   ///
   /// Returns the updated [State] after stopping.
+  /// Throws [StateError] if [ready] has not been called or has not completed.
   static Future<State> stop() async {
+    _assertReady();
     final result = await _platform.stop();
 
     // Stop trip detection and reset.

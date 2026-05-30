@@ -11,6 +11,7 @@ void main() async {
 
     setUp(() {
       tripManager = TripManager();
+      tripManager.initialize();
       tripEvents = <Map<String, Object?>>[];
       tripManager.onTripEnd = (data) => tripEvents.add(data);
     });

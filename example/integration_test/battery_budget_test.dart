@@ -17,11 +17,13 @@ void main() {
   group('BatteryBudgetEngine — Construction', () {
     testWidgets('can be instantiated with default parameters', (tester) async {
       final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0);
+      engine.initialize();
       expect(engine, isA<BatteryBudgetEngine>());
     });
 
     testWidgets('accepts zero budget (disabled)', (tester) async {
       final engine = BatteryBudgetEngine(targetBudgetPerHour: 0.0);
+      engine.initialize();
       expect(engine, isA<BatteryBudgetEngine>());
     });
   });
@@ -31,6 +33,7 @@ void main() {
       tester,
     ) async {
       final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0);
+      engine.initialize();
 
       // First call establishes baseline, no adjustment yet
       final adjustment = engine.processSample(0.95);
@@ -41,6 +44,7 @@ void main() {
       tester,
     ) async {
       final engine = BatteryBudgetEngine(targetBudgetPerHour: 3.0);
+      engine.initialize();
 
       // Simulate baseline
       engine.processSample(0.95);
