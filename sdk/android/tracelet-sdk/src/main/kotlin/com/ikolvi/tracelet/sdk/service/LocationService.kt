@@ -785,6 +785,42 @@ class LocationService : Service(), DefaultLifecycleObserver {
                 val geoManager = GeofenceManager(ctx, config, eventSender)
                 geoManager.reRegisterAll()
                 GeofenceBroadcastReceiver.geofenceManager = geoManager
+
+                // Arm stationary geofence in boot mode if configured and stationary
+                if (config.getStationaryGeofenceEnabled() && state.speedMotionState == com.ikolvi.tracelet.sdk.model.SpeedMotionState.STATIONARY) {
+                    val lastLoc = bootLocationEngine?.getLastLocation()
+                    if (lastLoc != null && !(lastLoc.latitude == 0.0 && lastLoc.longitude == 0.0)) {
+                        val identifier = config.getStationaryGeofenceIdentifier()
+                        geoManager.removeGeofence(identifier)
+                        geoManager.addGeofence(mapOf<String, Any?>(
+                            "identifier" to identifier,
+                            "latitude" to lastLoc.latitude,
+                            "longitude" to lastLoc.longitude,
+                            "radius" to config.getStationaryGeofenceRadius(),
+                            "notifyOnEntry" to false,
+                            "notifyOnExit" to true,
+                            "notifyOnDwell" to false,
+                            "loiteringDelay" to 0,
+                            "extras" to mapOf("_tracelet_internal" to true),
+                        ))
+                        Log.d(TAG, "Boot: armed stationary geofence at (${lastLoc.latitude}, ${lastLoc.longitude})")
+                    }
+                }
+
+                // Wire EXIT callback for boot-mode stationary geofence
+                geoManager.onStationaryGeofenceExit = {
+                    Log.d(TAG, "Boot: Stationary geofence EXIT — resuming continuous tracking")
+                    val engine = bootLocationEngine ?: return@let
+                    geoManager.removeGeofence(config.getStationaryGeofenceIdentifier())
+                    state.isMoving = true
+                    state.trackingMode = TrackingMode.CONTINUOUS
+                    engine.start()
+                    bootSpeedMotionManager?.forceMovingState()
+                    val locMap = engine.getLastLocation()?.let { engine.enrichLocation(it, "motionchange") }
+                        ?: mapOf("is_moving" to true)
+                    eventSender.sendMotionChange(locMap)
+                }
+
                 Log.d(TAG, "Geofence registrations restored after boot/task-removal")
             }
         }

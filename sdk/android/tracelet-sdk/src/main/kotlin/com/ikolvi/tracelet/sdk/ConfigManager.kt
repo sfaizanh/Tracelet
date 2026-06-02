@@ -617,6 +617,15 @@ class ConfigManager(context: Context) {
     fun getSpeedWakeConfirmCount(): Int =
         getInt("speedWakeConfirmCount", DEFAULT_SPEED_WAKE_CONFIRM_COUNT)
 
+    fun getStationaryGeofenceEnabled(): Boolean =
+        getBool("stationaryGeofenceEnabled", false)
+
+    fun getStationaryGeofenceRadius(): Double =
+        getDouble("stationaryGeofenceRadius", 150.0)
+
+    fun getStationaryGeofenceIdentifier(): String =
+        getString("stationaryGeofenceIdentifier", "__tracelet_stationary__")
+
     // ---------------------------------------------------------------------------
     // Typed Getters (GeofenceConfig)
     // ---------------------------------------------------------------------------

@@ -175,6 +175,90 @@ void main() {
       });
     });
 
+    group('StationaryGeofenceConfig', () {
+      test('defaults', () {
+        const config = StationaryGeofenceConfig();
+        expect(config.enabled, false);
+        expect(config.radius, 150.0);
+        expect(config.identifier, '__tracelet_stationary__');
+        expect(config.notifyOnExitOnly, true);
+      });
+
+      test('round-trip serialization', () {
+        const config = StationaryGeofenceConfig(
+          enabled: true,
+          radius: 200.0,
+          identifier: '__custom_id__',
+          notifyOnExitOnly: false,
+        );
+        final map = config.toMap();
+        expect(map['enabled'], true);
+        expect(map['radius'], 200.0);
+        expect(map['identifier'], '__custom_id__');
+        expect(map['notifyOnExitOnly'], false);
+
+        final restored = StationaryGeofenceConfig.fromMap(map);
+        expect(restored.enabled, true);
+        expect(restored.radius, 200.0);
+        expect(restored.identifier, '__custom_id__');
+        expect(restored.notifyOnExitOnly, false);
+      });
+
+      test('equality', () {
+        const a = StationaryGeofenceConfig(enabled: true, radius: 150.0);
+        const b = StationaryGeofenceConfig(enabled: true, radius: 150.0);
+        const c = StationaryGeofenceConfig(enabled: true, radius: 200.0);
+        expect(a, equals(b));
+        expect(a, isNot(equals(c)));
+      });
+
+      test('hashCode equality', () {
+        const a = StationaryGeofenceConfig(enabled: true);
+        const b = StationaryGeofenceConfig(enabled: true);
+        expect(a.hashCode, equals(b.hashCode));
+      });
+
+      test('fromMap with missing keys uses defaults', () {
+        final config = StationaryGeofenceConfig.fromMap(const {});
+        expect(config.enabled, false);
+        expect(config.radius, 150.0);
+        expect(config.identifier, '__tracelet_stationary__');
+        expect(config.notifyOnExitOnly, true);
+      });
+    });
+
+    group('MotionConfig with StationaryGeofenceConfig', () {
+      test('stationaryGeofence field serialization round-trip', () {
+        const config = MotionConfig(
+          stationaryGeofence: StationaryGeofenceConfig(
+            enabled: true,
+            radius: 180.0,
+          ),
+        );
+        final map = config.toMap();
+        expect(map['stationaryGeofence'], isA<Map<String, Object?>>());
+
+        final restored = MotionConfig.fromMap(map);
+        expect(restored.stationaryGeofence.enabled, true);
+        expect(restored.stationaryGeofence.radius, 180.0);
+        expect(restored.stationaryGeofence.identifier, '__tracelet_stationary__');
+      });
+
+      test('equality includes stationaryGeofence', () {
+        const a = MotionConfig(
+          stationaryGeofence: StationaryGeofenceConfig(enabled: true),
+        );
+        const b = MotionConfig(
+          stationaryGeofence: StationaryGeofenceConfig(enabled: true),
+        );
+        const c = MotionConfig(
+          stationaryGeofence: StationaryGeofenceConfig(enabled: false),
+        );
+        expect(a, equals(b));
+        expect(a, isNot(equals(c)));
+      });
+    });
+
     test('HttpConfig.toMap serializes method as int index', () {
       const postConfig = HttpConfig();
       const putConfig = HttpConfig(method: HttpMethod.put);

@@ -258,6 +258,9 @@ class TraceletHostApiImpl(
             put("stationaryPeriodicInterval", c.motion.stationaryPeriodicInterval)
             put("stationaryPeriodicAccuracy", c.motion.stationaryPeriodicAccuracy.raw)
             put("speedWakeConfirmCount", c.motion.speedWakeConfirmCount)
+            put("stationaryGeofenceEnabled", c.motion.stationaryGeofenceEnabled)
+            put("stationaryGeofenceRadius", c.motion.stationaryGeofenceRadius)
+            put("stationaryGeofenceIdentifier", c.motion.stationaryGeofenceIdentifier)
         })
         put("geofence", buildMap {
             put("geofenceModeHighAccuracy", c.geofence.geofenceModeHighAccuracy)

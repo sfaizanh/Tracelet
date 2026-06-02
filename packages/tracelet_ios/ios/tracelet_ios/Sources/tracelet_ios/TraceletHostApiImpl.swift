@@ -129,6 +129,9 @@ class TraceletHostApiImpl: TraceletHostApi {
         dict["stationaryPeriodicInterval"] = c.motion.stationaryPeriodicInterval
         dict["stationaryPeriodicAccuracy"] = c.motion.stationaryPeriodicAccuracy.rawValue
         dict["speedWakeConfirmCount"] = c.motion.speedWakeConfirmCount
+        dict["stationaryGeofenceEnabled"] = c.motion.stationaryGeofenceEnabled
+        dict["stationaryGeofenceRadius"] = c.motion.stationaryGeofenceRadius
+        dict["stationaryGeofenceIdentifier"] = c.motion.stationaryGeofenceIdentifier
 
         // Geofence
         dict["geofenceModeHighAccuracy"] = c.geofence.geofenceModeHighAccuracy

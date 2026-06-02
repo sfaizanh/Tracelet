@@ -1066,6 +1066,9 @@ struct TlMotionConfig: Hashable {
   var stationaryPeriodicInterval: Int64
   var stationaryPeriodicAccuracy: TlDesiredAccuracy
   var speedWakeConfirmCount: Int64
+  var stationaryGeofenceEnabled: Bool
+  var stationaryGeofenceRadius: Double
+  var stationaryGeofenceIdentifier: String
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -1092,6 +1095,9 @@ struct TlMotionConfig: Hashable {
     let stationaryPeriodicInterval = pigeonVar_list[19] as! Int64
     let stationaryPeriodicAccuracy = pigeonVar_list[20] as! TlDesiredAccuracy
     let speedWakeConfirmCount = pigeonVar_list[21] as! Int64
+    let stationaryGeofenceEnabled = pigeonVar_list[22] as! Bool
+    let stationaryGeofenceRadius = pigeonVar_list[23] as! Double
+    let stationaryGeofenceIdentifier = pigeonVar_list[24] as! String
 
     return TlMotionConfig(
       stopTimeout: stopTimeout,
@@ -1115,7 +1121,10 @@ struct TlMotionConfig: Hashable {
       stationaryTrackingMode: stationaryTrackingMode,
       stationaryPeriodicInterval: stationaryPeriodicInterval,
       stationaryPeriodicAccuracy: stationaryPeriodicAccuracy,
-      speedWakeConfirmCount: speedWakeConfirmCount
+      speedWakeConfirmCount: speedWakeConfirmCount,
+      stationaryGeofenceEnabled: stationaryGeofenceEnabled,
+      stationaryGeofenceRadius: stationaryGeofenceRadius,
+      stationaryGeofenceIdentifier: stationaryGeofenceIdentifier
     )
   }
   func toList() -> [Any?] {
@@ -1142,13 +1151,16 @@ struct TlMotionConfig: Hashable {
       stationaryPeriodicInterval,
       stationaryPeriodicAccuracy,
       speedWakeConfirmCount,
+      stationaryGeofenceEnabled,
+      stationaryGeofenceRadius,
+      stationaryGeofenceIdentifier,
     ]
   }
   static func == (lhs: TlMotionConfig, rhs: TlMotionConfig) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return deepEqualsTraceletApi(lhs.stopTimeout, rhs.stopTimeout) && deepEqualsTraceletApi(lhs.motionTriggerDelay, rhs.motionTriggerDelay) && deepEqualsTraceletApi(lhs.disableMotionActivityUpdates, rhs.disableMotionActivityUpdates) && deepEqualsTraceletApi(lhs.isMoving, rhs.isMoving) && deepEqualsTraceletApi(lhs.activityRecognitionInterval, rhs.activityRecognitionInterval) && deepEqualsTraceletApi(lhs.minimumActivityRecognitionConfidence, rhs.minimumActivityRecognitionConfidence) && deepEqualsTraceletApi(lhs.disableStopDetection, rhs.disableStopDetection) && deepEqualsTraceletApi(lhs.stopDetectionDelay, rhs.stopDetectionDelay) && deepEqualsTraceletApi(lhs.stopOnStationary, rhs.stopOnStationary) && deepEqualsTraceletApi(lhs.activityTypes, rhs.activityTypes) && deepEqualsTraceletApi(lhs.stationaryRadius, rhs.stationaryRadius) && deepEqualsTraceletApi(lhs.useSignificantChangesOnly, rhs.useSignificantChangesOnly) && deepEqualsTraceletApi(lhs.shakeThreshold, rhs.shakeThreshold) && deepEqualsTraceletApi(lhs.stillThreshold, rhs.stillThreshold) && deepEqualsTraceletApi(lhs.stillSampleCount, rhs.stillSampleCount) && deepEqualsTraceletApi(lhs.motionDetectionMode, rhs.motionDetectionMode) && deepEqualsTraceletApi(lhs.speedMovingThreshold, rhs.speedMovingThreshold) && deepEqualsTraceletApi(lhs.speedStationaryDelay, rhs.speedStationaryDelay) && deepEqualsTraceletApi(lhs.stationaryTrackingMode, rhs.stationaryTrackingMode) && deepEqualsTraceletApi(lhs.stationaryPeriodicInterval, rhs.stationaryPeriodicInterval) && deepEqualsTraceletApi(lhs.stationaryPeriodicAccuracy, rhs.stationaryPeriodicAccuracy) && deepEqualsTraceletApi(lhs.speedWakeConfirmCount, rhs.speedWakeConfirmCount)
+    return deepEqualsTraceletApi(lhs.stopTimeout, rhs.stopTimeout) && deepEqualsTraceletApi(lhs.motionTriggerDelay, rhs.motionTriggerDelay) && deepEqualsTraceletApi(lhs.disableMotionActivityUpdates, rhs.disableMotionActivityUpdates) && deepEqualsTraceletApi(lhs.isMoving, rhs.isMoving) && deepEqualsTraceletApi(lhs.activityRecognitionInterval, rhs.activityRecognitionInterval) && deepEqualsTraceletApi(lhs.minimumActivityRecognitionConfidence, rhs.minimumActivityRecognitionConfidence) && deepEqualsTraceletApi(lhs.disableStopDetection, rhs.disableStopDetection) && deepEqualsTraceletApi(lhs.stopDetectionDelay, rhs.stopDetectionDelay) && deepEqualsTraceletApi(lhs.stopOnStationary, rhs.stopOnStationary) && deepEqualsTraceletApi(lhs.activityTypes, rhs.activityTypes) && deepEqualsTraceletApi(lhs.stationaryRadius, rhs.stationaryRadius) && deepEqualsTraceletApi(lhs.useSignificantChangesOnly, rhs.useSignificantChangesOnly) && deepEqualsTraceletApi(lhs.shakeThreshold, rhs.shakeThreshold) && deepEqualsTraceletApi(lhs.stillThreshold, rhs.stillThreshold) && deepEqualsTraceletApi(lhs.stillSampleCount, rhs.stillSampleCount) && deepEqualsTraceletApi(lhs.motionDetectionMode, rhs.motionDetectionMode) && deepEqualsTraceletApi(lhs.speedMovingThreshold, rhs.speedMovingThreshold) && deepEqualsTraceletApi(lhs.speedStationaryDelay, rhs.speedStationaryDelay) && deepEqualsTraceletApi(lhs.stationaryTrackingMode, rhs.stationaryTrackingMode) && deepEqualsTraceletApi(lhs.stationaryPeriodicInterval, rhs.stationaryPeriodicInterval) && deepEqualsTraceletApi(lhs.stationaryPeriodicAccuracy, rhs.stationaryPeriodicAccuracy) && deepEqualsTraceletApi(lhs.speedWakeConfirmCount, rhs.speedWakeConfirmCount) && deepEqualsTraceletApi(lhs.stationaryGeofenceEnabled, rhs.stationaryGeofenceEnabled) && deepEqualsTraceletApi(lhs.stationaryGeofenceRadius, rhs.stationaryGeofenceRadius) && deepEqualsTraceletApi(lhs.stationaryGeofenceIdentifier, rhs.stationaryGeofenceIdentifier)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -1175,6 +1187,9 @@ struct TlMotionConfig: Hashable {
     deepHashTraceletApi(value: stationaryPeriodicInterval, hasher: &hasher)
     deepHashTraceletApi(value: stationaryPeriodicAccuracy, hasher: &hasher)
     deepHashTraceletApi(value: speedWakeConfirmCount, hasher: &hasher)
+    deepHashTraceletApi(value: stationaryGeofenceEnabled, hasher: &hasher)
+    deepHashTraceletApi(value: stationaryGeofenceRadius, hasher: &hasher)
+    deepHashTraceletApi(value: stationaryGeofenceIdentifier, hasher: &hasher)
   }
 }
 

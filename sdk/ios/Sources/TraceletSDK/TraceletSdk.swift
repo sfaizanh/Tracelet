@@ -710,6 +710,53 @@ public final class TraceletSdk {
     }
 
     // =========================================================================
+    // MARK: - Stationary Geofence (Auto Arm/Disarm)
+    // =========================================================================
+
+    /// Arms the stationary geofence at the last known position.
+    /// Called internally when the speed state machine transitions to STATIONARY
+    /// and `stationaryGeofenceEnabled` is true.
+    private func armStationaryGeofence() {
+        guard configManager.getStationaryGeofenceEnabled() else { return }
+
+        guard let lastLoc = locationEngine.getLastLocation() else { return }
+        let lat = lastLoc.coordinate.latitude
+        let lng = lastLoc.coordinate.longitude
+
+        // Reject null-island coordinates
+        guard !(lat == 0.0 && lng == 0.0) else { return }
+
+        let identifier = configManager.getStationaryGeofenceIdentifier()
+        let radius = configManager.getStationaryGeofenceRadius()
+
+        // Idempotent: remove stale instance before re-registering
+        geofenceManager.removeGeofence(identifier)
+
+        let geofenceDict: [String: Any] = [
+            "identifier": identifier,
+            "latitude": lat,
+            "longitude": lng,
+            "radius": radius,
+            "notifyOnEntry": false,
+            "notifyOnExit": true,
+            "notifyOnDwell": false,
+            "loiteringDelay": 0,
+            "extras": ["_tracelet_internal": true],
+        ]
+        geofenceManager.addGeofence(geofenceDict)
+        NSLog("[Tracelet] armStationaryGeofence: registered at (\(lat), \(lng)) radius=\(radius)m id=\(identifier)")
+    }
+
+    /// Disarms the stationary geofence.
+    /// Called internally when the speed state machine transitions back to MOVING.
+    private func disarmStationaryGeofence() {
+        guard configManager.getStationaryGeofenceEnabled() else { return }
+        let identifier = configManager.getStationaryGeofenceIdentifier()
+        geofenceManager.removeGeofence(identifier)
+        NSLog("[Tracelet] disarmStationaryGeofence: removed id=\(identifier)")
+    }
+
+    // =========================================================================
     // MARK: - Geofencing
     // =========================================================================
 
@@ -1439,6 +1486,28 @@ public final class TraceletSdk {
             database: database,
             rustDatabase: rustDatabase
         )
+
+        // Wire stationary geofence EXIT → resume continuous tracking
+        geofenceManager.onStationaryGeofenceExit = { [weak self] in
+            guard let self = self else { return }
+            NSLog("[Tracelet] Stationary geofence EXIT received — resuming continuous tracking")
+            self.disarmStationaryGeofence()
+            self.stateManager.isMoving = true
+            self.stateManager.trackingMode = .continuous
+            self.locationEngine.switchToContinuous()
+            self.backgroundActivitySessionManager.start()
+            self.speedMotionManager?.forceMovingState()
+
+            let lastLoc = self.locationEngine.getLastLocation()
+            if let loc = lastLoc {
+                var map = self.locationEngine.buildLocationMap(loc, speed: self.locationEngine.lastEffectiveSpeed)
+                map["isMoving"] = true
+                map["event"] = "motionchange"
+                self.eventSender.sendMotionChange(map)
+            } else {
+                self.eventSender.sendMotionChange(["isMoving": true])
+            }
+        }
         
         // Smart motion coordinator
         smartMotionCoordinator = TraceletSmartMotionCoordinator(sdk: self)
@@ -2000,6 +2069,9 @@ extension TraceletSdk: SpeedMotionDelegate {
 
     public func switchToContinuousForce() {
         BackgroundTaskHelper.shared.run("speedSwitchContinuous") { [self] in
+            // Disarm stationary geofence if it was armed
+            disarmStationaryGeofence()
+
             stateManager.isMoving = true
             stateManager.trackingMode = .continuous
             locationEngine.switchToContinuous()
@@ -2079,6 +2151,9 @@ extension TraceletSdk: SpeedMotionDelegate {
             locationEngine.switchToStationaryGeofences()
             backgroundActivitySessionManager.stop()
             geofenceManager.reRegisterAll()
+
+            // Arm stationary geofence if configured
+            armStationaryGeofence()
 
             // Emit motionchange event for backward compatibility
             let lastLoc = locationEngine.getLastLocation()

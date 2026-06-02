@@ -303,6 +303,8 @@ class TraceletSdk private constructor(private val context: Context) {
                         smartMotionCoordinator.onSpeedStateChange(true)
                         return
                     }
+                    // Disarm stationary geofence if it was armed
+                    disarmStationaryGeofence()
                     val useForeground = configManager.isForegroundServiceEnabled()
                     if (useForeground) {
                         LocationService.switchToContinuous(locationEngine, stateManager)
@@ -366,6 +368,8 @@ class TraceletSdk private constructor(private val context: Context) {
                         locationEngine.stop()
                         stateManager.trackingMode = TrackingMode.GEOFENCES
                     }
+                    // Arm stationary geofence if configured
+                    armStationaryGeofence()
                     // Dispatch motionchange event so Flutter UI updates _isMoving
                     stateManager.isMoving = false
                     val locationMap = locationEngine.getLastLocation()?.let {
@@ -386,6 +390,25 @@ class TraceletSdk private constructor(private val context: Context) {
             context, configManager, eventSender, rustDatabase
         )
         GeofenceBroadcastReceiver.geofenceManager = geofenceManager
+
+        // Wire stationary geofence EXIT → resume continuous tracking
+        geofenceManager.onStationaryGeofenceExit = {
+            android.util.Log.d("Tracelet", "Stationary geofence EXIT received — resuming continuous tracking")
+            disarmStationaryGeofence()
+            val useForeground = configManager.isForegroundServiceEnabled()
+            if (useForeground) {
+                LocationService.switchToContinuous(locationEngine, stateManager)
+            } else {
+                stateManager.trackingMode = TrackingMode.CONTINUOUS
+                locationEngine.start()
+            }
+            stateManager.isMoving = true
+            speedMotionManager.forceMovingState()
+            val locationMap = locationEngine.getLastLocation()?.let {
+                locationEngine.enrichLocation(it, "motionchange")
+            } ?: mapOf("is_moving" to true)
+            eventSender.sendMotionChange(locationMap)
+        }
 
         // Schedule
         scheduleManager = ScheduleManager(
@@ -984,6 +1007,57 @@ class TraceletSdk private constructor(private val context: Context) {
             "trackingMode" to TrackingMode.CONTINUOUS.value, "schedulerEnabled" to false, "odometer" to 0.0,
         )
         return locationEngine.setOdometer(value)
+    }
+
+    // =========================================================================
+    // Stationary Geofence (Auto Arm/Disarm)
+    // =========================================================================
+
+    /**
+     * Arms the stationary geofence at the last known position.
+     * Called internally when the speed state machine transitions to STATIONARY
+     * and [ConfigManager.getStationaryGeofenceEnabled] is true.
+     */
+    private fun armStationaryGeofence() {
+        if (!configManager.getStationaryGeofenceEnabled()) return
+
+        val lastLoc = locationEngine.getLastLocation() ?: return
+        val lat = lastLoc.latitude
+        val lng = lastLoc.longitude
+
+        // Reject null-island coordinates
+        if (lat == 0.0 && lng == 0.0) return
+
+        val identifier = configManager.getStationaryGeofenceIdentifier()
+        val radius = configManager.getStationaryGeofenceRadius()
+
+        // Idempotent: remove stale instance before re-registering
+        geofenceManager.removeGeofence(identifier)
+
+        val geofenceMap = mapOf<String, Any?>(
+            "identifier" to identifier,
+            "latitude" to lat,
+            "longitude" to lng,
+            "radius" to radius,
+            "notifyOnEntry" to false,
+            "notifyOnExit" to true,
+            "notifyOnDwell" to false,
+            "loiteringDelay" to 0,
+            "extras" to mapOf("_tracelet_internal" to true),
+        )
+        geofenceManager.addGeofence(geofenceMap)
+        android.util.Log.d("Tracelet", "armStationaryGeofence: registered at ($lat, $lng) radius=${radius}m id=$identifier")
+    }
+
+    /**
+     * Disarms the stationary geofence.
+     * Called internally when the speed state machine transitions back to MOVING.
+     */
+    private fun disarmStationaryGeofence() {
+        if (!configManager.getStationaryGeofenceEnabled()) return
+        val identifier = configManager.getStationaryGeofenceIdentifier()
+        geofenceManager.removeGeofence(identifier)
+        android.util.Log.d("Tracelet", "disarmStationaryGeofence: removed id=$identifier")
     }
 
     // =========================================================================

@@ -28,6 +28,10 @@ public final class GeofenceManager: NSObject, CLLocationManagerDelegate {
     private var lastLatitude: Double?
     private var lastLongitude: Double?
 
+    /// Callback invoked when the stationary sentinel geofence fires an EXIT event.
+    /// The host (TraceletSdk) sets this to resume continuous tracking.
+    public var onStationaryGeofenceExit: (() -> Void)?
+
     /// In-memory cache of active geofences to avoid querying the SQLite database on every GPS location update.
     private var cachedGeofences: [[String: Any]]?
     private let rustDatabase: DatabaseManager?
@@ -178,6 +182,12 @@ public final class GeofenceManager: NSObject, CLLocationManagerDelegate {
 
     /// Deletes all registered geofences.
     public func removeGeofences() -> Bool {
+        // Check if stationary sentinel is currently armed (before clearing)
+        let sentinelId = configManager.getStationaryGeofenceIdentifier()
+        let sentinelArmed = configManager.getStationaryGeofenceEnabled() && geofenceExists(sentinelId)
+        // Capture sentinel data before clearing databases
+        let sentinelData: [String: Any]? = sentinelArmed ? getGeofence(sentinelId) : nil
+
         let _ = database.deleteAllGeofences()
         do {
             try rustDatabase?.clearGeofences()
@@ -187,7 +197,17 @@ public final class GeofenceManager: NSObject, CLLocationManagerDelegate {
 
         cachedGeofences = nil
         for region in locationManager.monitoredRegions {
+            // Preserve the stationary sentinel region if it's armed
+            if sentinelArmed && region.identifier == sentinelId {
+                continue
+            }
             locationManager.stopMonitoring(for: region)
+        }
+
+        // Re-persist the sentinel if it was armed
+        if sentinelArmed, let data = sentinelData {
+            let _ = addGeofence(data)
+            NSLog("[Tracelet] removeGeofences: re-armed stationary sentinel (protected from bulk remove)")
         }
         return true
     }
@@ -280,6 +300,16 @@ public final class GeofenceManager: NSObject, CLLocationManagerDelegate {
         })
 
         for t in transitions {
+            // Intercept stationary sentinel geofence EXIT in high-accuracy mode
+            let sentinelId = configManager.getStationaryGeofenceIdentifier()
+            if t.action == "EXIT" && t.identifier == sentinelId {
+                NSLog("[Tracelet] Stationary sentinel geofence EXIT (high-accuracy) — triggering motion resume")
+                let _ = removeGeofence(sentinelId)
+                geofenceEvaluator.removeGeofence(identifier: sentinelId)
+                onStationaryGeofenceExit?()
+                continue
+            }
+
             let gfMap = geofenceMapById[t.identifier]
             let eventData: [String: Any] = [
                 "identifier": t.identifier,
@@ -460,6 +490,16 @@ public final class GeofenceManager: NSObject, CLLocationManagerDelegate {
 
     public func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
         guard let circular = region as? CLCircularRegion else { return }
+
+        // Intercept stationary sentinel geofence EXIT — handle internally
+        let sentinelId = configManager.getStationaryGeofenceIdentifier()
+        if circular.identifier == sentinelId {
+            NSLog("[Tracelet] Stationary sentinel geofence EXIT — triggering motion resume")
+            let _ = removeGeofence(sentinelId)
+            onStationaryGeofenceExit?()
+            return
+        }
+
         handleTransition(region: circular, action: "EXIT")
 
         // KnockOut mode: auto-remove after EXIT
@@ -519,9 +559,15 @@ public final class GeofenceManager: NSObject, CLLocationManagerDelegate {
     /// Resolve the effective maximum number of simultaneously monitored geofences.
     /// Uses `maxMonitoredGeofences` if set (> 0), otherwise falls back to
     /// the platform maximum (20 for iOS).
+    /// When the stationary geofence feature is enabled, reserves one slot for it.
     private func resolveMaxMonitored() -> Int {
         let configured = configManager.getMaxMonitoredGeofences()
-        return configured > 0 ? min(configured, GeofenceManager.maxRegions) : GeofenceManager.maxRegions
+        let base = configured > 0 ? min(configured, GeofenceManager.maxRegions) : GeofenceManager.maxRegions
+        // Reserve one slot for the stationary sentinel geofence when enabled
+        if configManager.getStationaryGeofenceEnabled() {
+            return max(base - 1, 1)
+        }
+        return base
     }
 
     private func mapToCoreGeofence(_ gf: [String: Any]) -> CoreGeofence {

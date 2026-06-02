@@ -173,6 +173,10 @@ public final class ConfigManager {
     public func getStationaryPeriodicInterval() -> Int { (cache["stationaryPeriodicInterval"] as? NSNumber)?.intValue ?? 120 }
     public func getSpeedWakeConfirmCount() -> Int { (cache["speedWakeConfirmCount"] as? NSNumber)?.intValue ?? 1 }
 
+    public func getStationaryGeofenceEnabled() -> Bool { cache["stationaryGeofenceEnabled"] as? Bool ?? false }
+    public func getStationaryGeofenceRadius() -> Double { cache["stationaryGeofenceRadius"] as? Double ?? 150.0 }
+    public func getStationaryGeofenceIdentifier() -> String { cache["stationaryGeofenceIdentifier"] as? String ?? "__tracelet_stationary__" }
+
     /// Shake threshold (gravity-subtracted magnitude).
     ///
     /// iOS accelerometer data is processed as `sqrt(x²+y²+z²) - 1.0`,

@@ -1132,7 +1132,10 @@ data class TlMotionConfig (
   val stationaryTrackingMode: TlStationaryTrackingMode,
   val stationaryPeriodicInterval: Long,
   val stationaryPeriodicAccuracy: TlDesiredAccuracy,
-  val speedWakeConfirmCount: Long
+  val speedWakeConfirmCount: Long,
+  val stationaryGeofenceEnabled: Boolean,
+  val stationaryGeofenceRadius: Double,
+  val stationaryGeofenceIdentifier: String
 )
  {
   companion object {
@@ -1159,7 +1162,10 @@ data class TlMotionConfig (
       val stationaryPeriodicInterval = pigeonVar_list[19] as Long
       val stationaryPeriodicAccuracy = pigeonVar_list[20] as TlDesiredAccuracy
       val speedWakeConfirmCount = pigeonVar_list[21] as Long
-      return TlMotionConfig(stopTimeout, motionTriggerDelay, disableMotionActivityUpdates, isMoving, activityRecognitionInterval, minimumActivityRecognitionConfidence, disableStopDetection, stopDetectionDelay, stopOnStationary, activityTypes, stationaryRadius, useSignificantChangesOnly, shakeThreshold, stillThreshold, stillSampleCount, motionDetectionMode, speedMovingThreshold, speedStationaryDelay, stationaryTrackingMode, stationaryPeriodicInterval, stationaryPeriodicAccuracy, speedWakeConfirmCount)
+      val stationaryGeofenceEnabled = pigeonVar_list[22] as Boolean
+      val stationaryGeofenceRadius = pigeonVar_list[23] as Double
+      val stationaryGeofenceIdentifier = pigeonVar_list[24] as String
+      return TlMotionConfig(stopTimeout, motionTriggerDelay, disableMotionActivityUpdates, isMoving, activityRecognitionInterval, minimumActivityRecognitionConfidence, disableStopDetection, stopDetectionDelay, stopOnStationary, activityTypes, stationaryRadius, useSignificantChangesOnly, shakeThreshold, stillThreshold, stillSampleCount, motionDetectionMode, speedMovingThreshold, speedStationaryDelay, stationaryTrackingMode, stationaryPeriodicInterval, stationaryPeriodicAccuracy, speedWakeConfirmCount, stationaryGeofenceEnabled, stationaryGeofenceRadius, stationaryGeofenceIdentifier)
     }
   }
   fun toList(): List<Any?> {
@@ -1186,6 +1192,9 @@ data class TlMotionConfig (
       stationaryPeriodicInterval,
       stationaryPeriodicAccuracy,
       speedWakeConfirmCount,
+      stationaryGeofenceEnabled,
+      stationaryGeofenceRadius,
+      stationaryGeofenceIdentifier,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -1196,7 +1205,7 @@ data class TlMotionConfig (
       return true
     }
     val other = other as TlMotionConfig
-    return TraceletApiPigeonUtils.deepEquals(this.stopTimeout, other.stopTimeout) && TraceletApiPigeonUtils.deepEquals(this.motionTriggerDelay, other.motionTriggerDelay) && TraceletApiPigeonUtils.deepEquals(this.disableMotionActivityUpdates, other.disableMotionActivityUpdates) && TraceletApiPigeonUtils.deepEquals(this.isMoving, other.isMoving) && TraceletApiPigeonUtils.deepEquals(this.activityRecognitionInterval, other.activityRecognitionInterval) && TraceletApiPigeonUtils.deepEquals(this.minimumActivityRecognitionConfidence, other.minimumActivityRecognitionConfidence) && TraceletApiPigeonUtils.deepEquals(this.disableStopDetection, other.disableStopDetection) && TraceletApiPigeonUtils.deepEquals(this.stopDetectionDelay, other.stopDetectionDelay) && TraceletApiPigeonUtils.deepEquals(this.stopOnStationary, other.stopOnStationary) && TraceletApiPigeonUtils.deepEquals(this.activityTypes, other.activityTypes) && TraceletApiPigeonUtils.deepEquals(this.stationaryRadius, other.stationaryRadius) && TraceletApiPigeonUtils.deepEquals(this.useSignificantChangesOnly, other.useSignificantChangesOnly) && TraceletApiPigeonUtils.deepEquals(this.shakeThreshold, other.shakeThreshold) && TraceletApiPigeonUtils.deepEquals(this.stillThreshold, other.stillThreshold) && TraceletApiPigeonUtils.deepEquals(this.stillSampleCount, other.stillSampleCount) && TraceletApiPigeonUtils.deepEquals(this.motionDetectionMode, other.motionDetectionMode) && TraceletApiPigeonUtils.deepEquals(this.speedMovingThreshold, other.speedMovingThreshold) && TraceletApiPigeonUtils.deepEquals(this.speedStationaryDelay, other.speedStationaryDelay) && TraceletApiPigeonUtils.deepEquals(this.stationaryTrackingMode, other.stationaryTrackingMode) && TraceletApiPigeonUtils.deepEquals(this.stationaryPeriodicInterval, other.stationaryPeriodicInterval) && TraceletApiPigeonUtils.deepEquals(this.stationaryPeriodicAccuracy, other.stationaryPeriodicAccuracy) && TraceletApiPigeonUtils.deepEquals(this.speedWakeConfirmCount, other.speedWakeConfirmCount)
+    return TraceletApiPigeonUtils.deepEquals(this.stopTimeout, other.stopTimeout) && TraceletApiPigeonUtils.deepEquals(this.motionTriggerDelay, other.motionTriggerDelay) && TraceletApiPigeonUtils.deepEquals(this.disableMotionActivityUpdates, other.disableMotionActivityUpdates) && TraceletApiPigeonUtils.deepEquals(this.isMoving, other.isMoving) && TraceletApiPigeonUtils.deepEquals(this.activityRecognitionInterval, other.activityRecognitionInterval) && TraceletApiPigeonUtils.deepEquals(this.minimumActivityRecognitionConfidence, other.minimumActivityRecognitionConfidence) && TraceletApiPigeonUtils.deepEquals(this.disableStopDetection, other.disableStopDetection) && TraceletApiPigeonUtils.deepEquals(this.stopDetectionDelay, other.stopDetectionDelay) && TraceletApiPigeonUtils.deepEquals(this.stopOnStationary, other.stopOnStationary) && TraceletApiPigeonUtils.deepEquals(this.activityTypes, other.activityTypes) && TraceletApiPigeonUtils.deepEquals(this.stationaryRadius, other.stationaryRadius) && TraceletApiPigeonUtils.deepEquals(this.useSignificantChangesOnly, other.useSignificantChangesOnly) && TraceletApiPigeonUtils.deepEquals(this.shakeThreshold, other.shakeThreshold) && TraceletApiPigeonUtils.deepEquals(this.stillThreshold, other.stillThreshold) && TraceletApiPigeonUtils.deepEquals(this.stillSampleCount, other.stillSampleCount) && TraceletApiPigeonUtils.deepEquals(this.motionDetectionMode, other.motionDetectionMode) && TraceletApiPigeonUtils.deepEquals(this.speedMovingThreshold, other.speedMovingThreshold) && TraceletApiPigeonUtils.deepEquals(this.speedStationaryDelay, other.speedStationaryDelay) && TraceletApiPigeonUtils.deepEquals(this.stationaryTrackingMode, other.stationaryTrackingMode) && TraceletApiPigeonUtils.deepEquals(this.stationaryPeriodicInterval, other.stationaryPeriodicInterval) && TraceletApiPigeonUtils.deepEquals(this.stationaryPeriodicAccuracy, other.stationaryPeriodicAccuracy) && TraceletApiPigeonUtils.deepEquals(this.speedWakeConfirmCount, other.speedWakeConfirmCount) && TraceletApiPigeonUtils.deepEquals(this.stationaryGeofenceEnabled, other.stationaryGeofenceEnabled) && TraceletApiPigeonUtils.deepEquals(this.stationaryGeofenceRadius, other.stationaryGeofenceRadius) && TraceletApiPigeonUtils.deepEquals(this.stationaryGeofenceIdentifier, other.stationaryGeofenceIdentifier)
   }
 
   override fun hashCode(): Int {
@@ -1223,6 +1232,9 @@ data class TlMotionConfig (
     result = 31 * result + TraceletApiPigeonUtils.deepHash(this.stationaryPeriodicInterval)
     result = 31 * result + TraceletApiPigeonUtils.deepHash(this.stationaryPeriodicAccuracy)
     result = 31 * result + TraceletApiPigeonUtils.deepHash(this.speedWakeConfirmCount)
+    result = 31 * result + TraceletApiPigeonUtils.deepHash(this.stationaryGeofenceEnabled)
+    result = 31 * result + TraceletApiPigeonUtils.deepHash(this.stationaryGeofenceRadius)
+    result = 31 * result + TraceletApiPigeonUtils.deepHash(this.stationaryGeofenceIdentifier)
     return result
   }
 }

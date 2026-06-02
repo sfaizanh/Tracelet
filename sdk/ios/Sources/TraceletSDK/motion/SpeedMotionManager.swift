@@ -172,6 +172,22 @@ public final class SpeedMotionManager {
         }
     }
 
+    /// Force the state machine to MOVING without firing the switchToContinuous callback.
+    /// Used when the stationary geofence EXIT already handled the tracking resume externally.
+    public func forceMovingState() {
+        guard isRunning else { return }
+        lowSpeedCount = 0
+        wakeCount = 0
+        stopSlowingTimer()
+        let previousState = state
+        state = .moving
+        if state != previousState {
+            persistState()
+            emitEvent(previous: previousState, current: state)
+        }
+        NSLog("[SpeedMotion] forceMovingState() — externally forced to MOVING")
+    }
+
     // MARK: - Location Feed
 
     /// Drive state machine transitions from a location fix speed.

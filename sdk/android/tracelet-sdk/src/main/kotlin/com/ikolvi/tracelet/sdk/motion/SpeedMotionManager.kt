@@ -155,6 +155,19 @@ class SpeedMotionManager(
     fun getCurrentState(): String = currentState.name.lowercase()
 
     /**
+     * Force the state machine to MOVING without firing the switchToContinuous callback.
+     * Used when the stationary geofence EXIT already handled the tracking resume externally.
+     */
+    fun forceMovingState() {
+        if (!started) return
+        lowSpeedCount = 0
+        wakeCount = 0
+        stopSlowingTimer()
+        transitionTo(SpeedMotionState.MOVING)
+        Log.d(TAG, "forceMovingState() — externally forced to MOVING")
+    }
+
+    /**
      * Feed a new location fix's speed into the state machine.
      *
      * Called by [LocationEngine] on every continuous or periodic fix

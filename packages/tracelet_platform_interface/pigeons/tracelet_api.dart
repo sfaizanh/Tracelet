@@ -325,7 +325,7 @@ class TlMotionConfig {
     required this.disableStopDetection,
     required this.stopDetectionDelay,
     required this.stopOnStationary,
-    required this.stationaryRadius, required this.useSignificantChangesOnly, required this.shakeThreshold, required this.stillThreshold, required this.stillSampleCount, required this.motionDetectionMode, required this.speedMovingThreshold, required this.speedStationaryDelay, required this.stationaryTrackingMode, required this.stationaryPeriodicInterval, required this.stationaryPeriodicAccuracy, required this.speedWakeConfirmCount, this.activityTypes,
+    required this.stationaryRadius, required this.useSignificantChangesOnly, required this.shakeThreshold, required this.stillThreshold, required this.stillSampleCount, required this.motionDetectionMode, required this.speedMovingThreshold, required this.speedStationaryDelay, required this.stationaryTrackingMode, required this.stationaryPeriodicInterval, required this.stationaryPeriodicAccuracy, required this.speedWakeConfirmCount, required this.stationaryGeofenceEnabled, required this.stationaryGeofenceRadius, required this.stationaryGeofenceIdentifier, this.activityTypes,
   });
   final int stopTimeout;
   final int motionTriggerDelay;
@@ -349,6 +349,9 @@ class TlMotionConfig {
   final int stationaryPeriodicInterval;
   final TlDesiredAccuracy stationaryPeriodicAccuracy;
   final int speedWakeConfirmCount;
+  final bool stationaryGeofenceEnabled;
+  final double stationaryGeofenceRadius;
+  final String stationaryGeofenceIdentifier;
 }
 
 class TlGeofenceConfig {

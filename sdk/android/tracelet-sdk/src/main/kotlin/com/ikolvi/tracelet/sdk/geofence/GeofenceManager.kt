@@ -53,6 +53,12 @@ class GeofenceManager(
     private var geofencePendingIntent: PendingIntent? = null
 
     /**
+     * Callback invoked when the stationary sentinel geofence fires an EXIT event.
+     * The host (TraceletSdk) sets this to resume continuous tracking.
+     */
+    var onStationaryGeofenceExit: (() -> Unit)? = null
+
+    /**
      * In-memory cache of geofences to prevent executing database queries per GPS location update.
      * Maps are preserved to maintain compatibility with system location callbacks and Dart channel handlers.
      */
@@ -213,12 +219,25 @@ class GeofenceManager(
 
     /** Remove all geofences. */
     fun removeGeofences(): Boolean {
+        // Preserve the stationary sentinel geofence if it's currently armed
+        val sentinelId = config.getStationaryGeofenceIdentifier()
+        val sentinelArmed = config.getStationaryGeofenceEnabled() && geofenceExists(sentinelId)
+        // Capture sentinel data before clearing databases
+        val sentinelData: Map<String, Any?>? = if (sentinelArmed) getGeofence(sentinelId) else null
+
         try {
             rustDatabase?.clearGeofences()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to clear geofences from Rust DB", e)
         }
-        return unregisterAllGeofences()
+        val result = unregisterAllGeofences()
+
+        // Re-arm the sentinel if it was active
+        if (sentinelArmed && sentinelData != null) {
+            Log.d(TAG, "removeGeofences: re-arming stationary sentinel (protected from bulk remove)")
+            addGeofence(sentinelData)
+        }
+        return result
     }
 
     fun getGeofences(): List<Map<String, Any?>> = getCachedGeofences()
@@ -280,6 +299,32 @@ class GeofenceManager(
             else -> return
         }
 
+        // Intercept stationary sentinel geofence EXIT — handle internally
+        val sentinelId = config.getStationaryGeofenceIdentifier()
+        if (action == "EXIT") {
+            val sentinelTriggered = triggeringGeofences.any { it.requestId == sentinelId }
+            if (sentinelTriggered) {
+                removeGeofence(sentinelId)
+                Log.d(TAG, "Stationary sentinel geofence EXIT — triggering motion resume")
+                onStationaryGeofenceExit?.invoke()
+                // Filter out the sentinel from further processing (don't expose to consumer)
+                val remaining = triggeringGeofences.filter { it.requestId != sentinelId }
+                if (remaining.isEmpty()) return
+                // Continue processing non-sentinel geofences
+                handleGeofenceEventInternal(action, remaining, latitude, longitude)
+                return
+            }
+        }
+
+        handleGeofenceEventInternal(action, triggeringGeofences, latitude, longitude)
+    }
+
+    private fun handleGeofenceEventInternal(
+        action: String,
+        triggeringGeofences: List<TraceletGeofence>,
+        latitude: Double,
+        longitude: Double,
+    ) {
         for (geofence in triggeringGeofences) {
             val identifier = geofence.requestId
             val storedGf = getGeofence(identifier)
@@ -344,6 +389,16 @@ class GeofenceManager(
         val geofenceMapById = allGeofences.associateBy { it["identifier"] as? String }
 
         for (t in transitions) {
+            // Intercept stationary sentinel geofence EXIT in high-accuracy mode
+            val sentinelId = config.getStationaryGeofenceIdentifier()
+            if (t.action == "EXIT" && t.identifier == sentinelId) {
+                Log.d(TAG, "Stationary sentinel geofence EXIT (high-accuracy) — triggering motion resume")
+                removeGeofence(sentinelId)
+                geofenceEvaluator.removeGeofence(sentinelId)
+                onStationaryGeofenceExit?.invoke()
+                continue
+            }
+
             val gfMap = geofenceMapById[t.identifier]
             val eventData = mapOf(
                 "identifier" to t.identifier,

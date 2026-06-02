@@ -1223,6 +1223,82 @@ class LoggerConfig {
   int get hashCode => Object.hash(logLevel, logMaxDays, debug);
 }
 
+/// Configuration for the automatic stationary geofence feature.
+///
+/// When enabled, the SDK automatically registers a circular geofence at the
+/// last known position when the motion state transitions to stationary, and
+/// removes it when motion resumes. The geofence EXIT event wakes the app
+/// (even from terminated state) and resumes continuous GPS tracking.
+///
+/// This eliminates the need for consumers to manually manage
+/// `addGeofence`/`removeGeofence` calls in response to `onMotionChange`.
+@immutable
+class StationaryGeofenceConfig {
+  /// Creates a [StationaryGeofenceConfig].
+  ///
+  /// [radius] must be >= 50.0 meters (OS limitation on both platforms).
+  const StationaryGeofenceConfig({
+    this.enabled = false,
+    this.radius = 150.0,
+    this.identifier = '__tracelet_stationary__',
+    this.notifyOnExitOnly = true,
+  }) : assert(radius >= 50.0, 'radius must be >= 50.0 meters');
+
+  factory StationaryGeofenceConfig.fromMap(Map<String, Object?> map) {
+    return StationaryGeofenceConfig(
+      enabled: ensureBool(map['enabled'], fallback: false),
+      radius: ensureDouble(map['radius'], fallback: 150),
+      identifier: map['identifier'] as String? ?? '__tracelet_stationary__',
+      notifyOnExitOnly: ensureBool(map['notifyOnExitOnly'], fallback: true),
+    );
+  }
+
+  /// Enable/disable the auto-stationary geofence feature.
+  /// Defaults to `false`.
+  final bool enabled;
+
+  /// Radius in meters for the stationary geofence.
+  ///
+  /// iOS region monitoring is most reliable in the 100–200m range.
+  /// Values below 100m may be ignored by the OS due to GPS accuracy floor.
+  /// Defaults to `150.0`.
+  final double radius;
+
+  /// Identifier for the managed geofence (internal).
+  ///
+  /// Uses a double-underscore prefix to avoid collision with user geofences.
+  /// Defaults to `'__tracelet_stationary__'`.
+  final String identifier;
+
+  /// Whether to notify on exit only.
+  ///
+  /// Should be `true` (default) to avoid double-firing when registering
+  /// while already inside the region.
+  final bool notifyOnExitOnly;
+
+  Map<String, Object?> toMap() {
+    return <String, Object?>{
+      'enabled': enabled,
+      'radius': radius,
+      'identifier': identifier,
+      'notifyOnExitOnly': notifyOnExitOnly,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is StationaryGeofenceConfig &&
+          runtimeType == other.runtimeType &&
+          enabled == other.enabled &&
+          radius == other.radius &&
+          identifier == other.identifier &&
+          notifyOnExitOnly == other.notifyOnExitOnly;
+
+  @override
+  int get hashCode => Object.hash(enabled, radius, identifier, notifyOnExitOnly);
+}
+
 @immutable
 class MotionConfig {
   const MotionConfig({
@@ -1248,6 +1324,7 @@ class MotionConfig {
     this.stationaryPeriodicInterval = 120,
     this.stationaryPeriodicAccuracy = DesiredAccuracy.high,
     this.speedWakeConfirmCount = 1,
+    this.stationaryGeofence = const StationaryGeofenceConfig(),
   }) : assert(speedStationaryDelay >= 0, 'speedStationaryDelay must be >= 0'),
        assert(speedWakeConfirmCount >= 1, 'speedWakeConfirmCount must be >= 1'),
        assert(speedMovingThreshold > 0, 'speedMovingThreshold must be > 0');
@@ -1326,6 +1403,9 @@ class MotionConfig {
         map['speedWakeConfirmCount'],
         fallback: 1,
       ),
+      stationaryGeofence: safeMap(map['stationaryGeofence']) != null
+          ? StationaryGeofenceConfig.fromMap(safeMap(map['stationaryGeofence'])!)
+          : const StationaryGeofenceConfig(),
     );
   }
 
@@ -1461,6 +1541,13 @@ class MotionConfig {
   /// stationary accuracy.
   final int speedWakeConfirmCount;
 
+  /// Configuration for the automatic stationary geofence.
+  ///
+  /// When enabled, the SDK registers a circular geofence at the stationary
+  /// location and removes it on motion resume. The geofence EXIT event
+  /// wakes the app and resumes tracking — even from terminated state.
+  final StationaryGeofenceConfig stationaryGeofence;
+
   /// Parses [MotionDetectionMode] from a String name or int index.
   static MotionDetectionMode _parseMotionDetectionMode(Object? raw) {
     if (raw is String) {
@@ -1521,6 +1608,7 @@ class MotionConfig {
       'stationaryPeriodicInterval': stationaryPeriodicInterval,
       'stationaryPeriodicAccuracy': stationaryPeriodicAccuracy.index,
       'speedWakeConfirmCount': speedWakeConfirmCount,
+      'stationaryGeofence': stationaryGeofence.toMap(),
     };
   }
 
@@ -1552,6 +1640,9 @@ class MotionConfig {
     stationaryPeriodicAccuracy:
         TlDesiredAccuracy.values[stationaryPeriodicAccuracy.index],
     speedWakeConfirmCount: speedWakeConfirmCount,
+    stationaryGeofenceEnabled: stationaryGeofence.enabled,
+    stationaryGeofenceRadius: stationaryGeofence.radius,
+    stationaryGeofenceIdentifier: stationaryGeofence.identifier,
   );
 
   @override
@@ -1581,7 +1672,8 @@ class MotionConfig {
           stationaryTrackingMode == other.stationaryTrackingMode &&
           stationaryPeriodicInterval == other.stationaryPeriodicInterval &&
           stationaryPeriodicAccuracy == other.stationaryPeriodicAccuracy &&
-          speedWakeConfirmCount == other.speedWakeConfirmCount;
+          speedWakeConfirmCount == other.speedWakeConfirmCount &&
+          stationaryGeofence == other.stationaryGeofence;
 
   @override
   String toString() =>
@@ -1614,6 +1706,7 @@ class MotionConfig {
     stationaryPeriodicInterval,
     stationaryPeriodicAccuracy,
     speedWakeConfirmCount,
+    stationaryGeofence,
   ]);
 }
 
